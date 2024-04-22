@@ -1,0 +1,40 @@
+name: Checkov_Test_Validation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: "1.0.0"
+          
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install pre-commit
+          
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov
+        run: checkov --quiet --compact -d .
+
+      - name: Save Checkov exit code to file
+        run: echo $? > CHVEXIT
+
+      - name: Display Checkov exit code
+        run: cat CHVEXIT

@@ -1,0 +1,65 @@
+locals {
+  naming_standarad_type = {
+    infrastructure = "R"
+    services       = "B"
+  }
+
+  environment = {
+    dev  = "D"
+    test = "T"
+    qa   = "Q"
+    prod = "P"
+  }
+  provider = {
+    azure   = "AZ"
+    equinix = "EQ"
+  }
+  region = {
+    eastus      = "E1"
+    westus      = "W1"
+    westeurope  = "WE"
+    northeurope = "NE"
+    amsterdam   = "AM"
+    ashburn     = "AB"
+  }
+  usage_designator = {
+    internal = "I"
+    external = "E"
+  }
+  appmnemonic = var.appmnemonic
+  resourcetype = {
+    datafactory          = "DF"
+    keyvault             = "KV"
+    logicapp             = "LA"
+    storageaccount       = "SA"
+    application_insights = "AI"
+  }
+  # This is Name saved as per TF Cloud Workspace
+  backend_workspace = "dat-dapp-${var.environment}"
+
+  # Azure Resources Named as per Elanco Naming Convenction 
+  resourcegroup        = upper("B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}RG01")
+  storageaccount       = lower("B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}SA01")
+  datalake             = lower("B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}DL01")
+  logicapp             = upper("B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}LA01")
+  synapse              = lower("B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}SY01")
+  sqlpool_name         = "B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}SQ01"
+  application_insights = "B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}AI01"
+  dfs_name             = lower("${local.appmnemonic}dataopscore")
+  databrick            = "B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}BK01"
+  # databrick_mg         = "databricks-rg-${local.resourcegroup}-${random_string.random.result}RG02"
+  daps_keyvault = "B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}KV01"
+
+  # daps_resourcegroup   = "B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}RG01"
+
+  dapp_keyvault       = upper("B${local.environment[var.environment]}AZE1I${local.appmnemonic}KV01")
+  dapp_resourcegroup  = upper("B${local.environment[var.environment]}AZE1I${local.appmnemonic}RG01")
+  datafactory         = upper("B${local.environment[var.environment]}AZ${local.region[var.location]}I${local.appmnemonic}DF01")
+  container_name      = lower("${var.functional_area}-${var.data_product_name}")
+  ad_admin_group_name = "AD-SEC-ALL-${var.functional_area}-${var.appmnemonic}-ADMINS"
+  ad_dev_group_name   = "AD-SEC-ALL-${var.functional_area}-${var.appmnemonic}-DEVELOPERS"
+  az_admin_group_name = "AZ-SEC-${local.environment[var.environment]}-${var.functional_area}-${var.appmnemonic}-ADMINS"
+  az_dev_group_name   = "AZ-SEC-${local.environment[var.environment]}-${var.functional_area}-${var.appmnemonic}-DEVELOPERS"
+
+
+}

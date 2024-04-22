@@ -1,0 +1,136 @@
+name: WIP-DatalakeContainer
+
+on:       
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      # datalake_resource_group_name:  
+      #     description: 'datalake resource group name: BDAZE1IDAPPRG01 '
+      #     required: true
+      #     type: string
+      datalake_name:
+          description: 'existing datalake name: bdaze1icommdl13'    
+      appshortcode:
+          description: 'Application Shortcode : GLSM'
+          required: true
+          type: string    
+      environment:
+          description: 'environments :dev/qa'
+          required: true
+          type: choice
+          options:
+            - dev
+            - qa
+            - prod
+      functional_area:
+          description: 'functionalarea : Global Services/DataOps/IT/M&Q/R&D'
+          required: true
+          type: choice
+          options:
+            - commercial
+            - dataops
+            - it
+            - global services
+            - m&q
+            - r&d
+      data_product_name:
+          description: 'dataproductname: Service Management'
+          required: true
+          default: "Service Management"
+          type: string
+      ad_admins_group:
+          description: 'ad_admins_group: AD-SEC-ALL-GLO-EOON-ADMINS '
+          type: string
+      ad_developers_group:
+          description: 'ad_developers_group: AD-SEC-ALL-GLO-EOON-DEVELOPERS'
+          type: string
+      data_factory_name:
+          description: 'datafactory resource name: BDAZE1INOOEDF02'
+          type: string
+      subscription_id:
+          description: 'subscription id of datafactory resource'
+          type: string
+      service_principal:
+          description: 'display name of the service principal'
+          type: string          
+jobs:
+  CreateDataLakeContainer-AcquireLease:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          path: infra/envs/dev
+        
+      - name: Log in Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.WIP_AZURECREDENTIALS }}
+          
+      - name: Provide execution permissions to replacement script
+        working-directory: infra/envs/dev
+        run: |
+          cd DatalakeContainer
+          chmod 777 ./checkfile.sh
+        
+      - name: Check if inputs.auto.tfvars exists
+        working-directory: infra/envs/dev
+        run: |
+          cd DatalakeContainer
+          ls
+          ./checkfile.sh
+
+      - name: Generate inputs.auto.tfvars
+        working-directory: infra/envs/dev  
+        run: |
+          cd DatalakeContainer
+          echo "existing_datalake = \"${{ github.event.inputs.datalake_name }}\"" >> inputs.tfvars
+          echo "appmnemonic = \"${{ github.event.inputs.appshortcode }}\"" >> inputs.tfvars
+          echo "environment = \"${{ github.event.inputs.environment }}\"" >> inputs.tfvars
+          echo "functional_area = \"${{ github.event.inputs.functional_area }}\"" >> inputs.tfvars
+          echo "data_product_name = \"${{ github.event.inputs.data_product_name }}\"" >> inputs.tfvars
+          echo "ad_admins_group = \"${{ github.event.inputs.ad_admins_group }}\"" >> inputs.tfvars
+          echo "ad_developers_group = \"${{ github.event.inputs.ad_developers_group }}\"" >> inputs.tfvars
+          echo "data_factory_name = \"${{ github.event.inputs.data_factory_name }}\"" >> inputs.tfvars
+          echo "subscription_id = \"${{ github.event.inputs.subscription_id }}\"" >> inputs.tfvars
+          echo "service_principal = \"${{ github.event.inputs.service_principal }}\"" >> inputs.tfvars          
+          
+          cat inputs.tfvars
+          ls
+    
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: "1.4.6"
+          terraform_wrapper: false
+          # cli_config_credentials_token: ${{ secrets.TFE_TOKEN }}
+
+      - name: Initialize Terraform
+        working-directory: infra/envs/dev
+        run: |
+          cd DatalakeContainer
+          terraform init
+
+      - name: Run Terraform Plan
+        working-directory: infra/envs/dev
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+        run: |
+          cd DatalakeContainer
+          terraform plan -var-file='inputs.tfvars'
+
+      - name: Deploy Azure resources
+        working-directory: infra/envs/dev
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+        run: |
+          cd DatalakeContainer
+          terraform apply -var-file='inputs.tfvars' -auto-approve 
+
+      - name: acquiring lease on datalake container
+        working-directory: infra/envs/dev  
+        run: |
+          cd DatalakeContainer
+          az storage container lease acquire --container-name $(terraform output -raw datalake_container_name) --account-name ${{ github.event.inputs.datalake_name }}
+    

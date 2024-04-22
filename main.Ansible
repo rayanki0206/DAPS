@@ -1,0 +1,190 @@
+############################
+
+
+
+############################
+
+
+#create resource group
+module "resource_group" {
+  source              = "./infra/modules/resource_group"
+  resource_group_name = upper(local.rg_name)
+  location            = var.location
+}
+#used in role assignment for scope(resource group id)
+data "azurerm_resource_group" "dapp" {
+  name       = module.resource_group.resource_group_name
+  depends_on = [ module.resource_group ]
+}
+#gives az_ad_dev_group object id
+data "azuread_group" "az_ad_dev" {
+  display_name = local.az_ad_developers_group
+
+}
+
+#IAM Role assignments for the az_ad_dev_group in resource group
+resource "azurerm_role_assignment" "az_ad_dev_storage_blob_data_contributor" {
+  scope                = data.azurerm_resource_group.dapp.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = data.azuread_group.az_ad_dev.object_id
+}
+#IAM Role assignments for the az_ad_dev_group in resource group
+resource "azurerm_role_assignment" "az_ad_dev_data_factory_contributor" {
+  scope                = data.azurerm_resource_group.dapp.id
+  role_definition_name = "Data Factory Contributor"
+  principal_id         = data.azuread_group.az_ad_dev.object_id
+}
+#gives az_ad_admins_group object id
+data "azuread_group" "az_ad_admins" {
+  display_name = local.az_ad_admins_group
+  #depends_on   = [module.az_ad_groups]
+}
+#IAM Role assignment for the az_ad_admins_group in resource group
+resource "azurerm_role_assignment" "az_ad_admins_contributor" {
+  scope                = data.azurerm_resource_group.dapp.id
+  role_definition_name = "Contributor"
+  principal_id         = data.azuread_group.az_ad_admins.object_id
+}
+#IAM Role assignments for the az_ad_admins_group in resource group
+resource "azurerm_role_assignment" "az_ad_admins_storage_blob_data_owner" {
+  scope                = data.azurerm_resource_group.dapp.id
+  role_definition_name = "Storage Blob Data Owner"
+  principal_id         = data.azuread_group.az_ad_admins.object_id
+}
+#IAM Role assignments for the ad_groups in resource group
+resource "azurerm_role_assignment" "az_ad_admins_data_factory_contributor" {
+  scope                = data.azurerm_resource_group.dapp.id
+  role_definition_name = "Data Factory Contributor"
+  principal_id         = data.azuread_group.az_ad_admins.object_id
+}
+
+#creates keyvault
+module "keyvault" {
+  source              = "./infra/modules/keyvault"
+  keyvault_Name       = local.kv_name
+  resource_group_name = module.resource_group.resource_group_name
+  location            = var.location
+  appmnemonic         = var.appmnemonic
+  depends_on          = [module.resource_group]
+}
+
+#gives object id and tenant id that are used in keyvault
+data "azurerm_client_config" "daps" {
+
+}
+
+# add current Terraform user to Keyvault 
+
+
+#this gives key vault access policy for admin group
+resource "azurerm_key_vault_access_policy" "tfadmin" {
+  key_vault_id = module.keyvault.key_vault_id
+  tenant_id    = data.azurerm_client_config.daps.tenant_id
+  object_id    = data.azurerm_client_config.daps.object_id
+
+  key_permissions = [
+    "Purge", "Backup", "Create", "Decrypt", "Delete", "Encrypt", "Get", "Import", "List", "Recover", "Restore", "Sign", "UnwrapKey", "Update", "Verify", "WrapKey", "Release", "Rotate", "GetRotationPolicy", "SetRotationPolicy"
+  ]
+
+  secret_permissions = [
+    "Purge", "Get", "Backup", "Delete", "List", "Recover", "Restore", "Set"
+  ]
+
+  certificate_permissions = [
+    "Purge", "Backup", "Create", "Delete", "DeleteIssuers", "Get", "GetIssuers", "Import", "List", "ListIssuers", "ManageContacts", "ManageIssuers", "Purge", "Recover", "Restore", "SetIssuers", "Update"
+  ]
+
+  depends_on = [ module.keyvault ]
+}
+
+
+
+#this gives key vault access policy (except purge) for dev group
+resource "azurerm_key_vault_access_policy" "dapp" {
+  key_vault_id = module.keyvault.key_vault_id
+  tenant_id    = data.azurerm_client_config.daps.tenant_id
+  object_id    = data.azuread_group.az_ad_dev.object_id
+
+  key_permissions = [
+    "Backup", "Create", "Decrypt", "Delete", "Encrypt", "Get", "Import", "List", "Recover", "Restore", "Sign", "UnwrapKey", "Update", "Verify", "WrapKey", "Release", "Rotate", "GetRotationPolicy", "SetRotationPolicy"
+  ]
+
+  secret_permissions = [
+    "Get", "Backup", "Delete", "List", "Recover", "Restore", "Set"
+  ]
+
+  certificate_permissions = [
+    "Backup", "Create", "Delete", "DeleteIssuers", "Get", "GetIssuers", "Import", "List", "ListIssuers", "ManageContacts", "ManageIssuers", "Purge", "Recover", "Restore", "SetIssuers", "Update"
+  ]
+  depends_on = [ module.keyvault ]
+}
+#this gives key vault access policy for admin group
+resource "azurerm_key_vault_access_policy" "admins_access" {
+  key_vault_id = module.keyvault.key_vault_id
+  tenant_id    = data.azurerm_client_config.daps.tenant_id
+  object_id    = data.azuread_group.az_ad_admins.object_id
+
+  key_permissions = [
+    "Purge", "Backup", "Create", "Decrypt", "Delete", "Encrypt", "Get", "Import", "List", "Recover", "Restore", "Sign", "UnwrapKey", "Update", "Verify", "WrapKey", "Release", "Rotate", "GetRotationPolicy", "SetRotationPolicy"
+  ]
+
+  secret_permissions = [
+    "Purge", "Get", "Backup", "Delete", "List", "Recover", "Restore", "Set"
+  ]
+
+  certificate_permissions = [
+    "Purge", "Backup", "Create", "Delete", "DeleteIssuers", "Get", "GetIssuers", "Import", "List", "ListIssuers", "ManageContacts", "ManageIssuers", "Purge", "Recover", "Restore", "SetIssuers", "Update"
+  ]
+  depends_on = [ module.keyvault ]
+}
+
+#creates datafactory and system assigned identity enabled
+module "datafactory" {
+  source                = "./infra/modules/datafactory"
+  datafactory_name      = local.df_name
+  adf_resourcegroupname = module.resource_group.resource_group_name
+  location              = var.location
+  tag_projectName       = "Service Management"
+  depends_on            = [module.resource_group]
+}
+
+#creates logic app and system assigned identity enabled
+module "logic_app" {
+  source                       = "./infra/modules/logic_app"
+  logicapp_name                = local.la_name
+  logicapp_location            = var.location
+  logicapp_resource_group_name = module.resource_group.resource_group_name
+  appmnemonic                  = local.app
+  depends_on                   = [module.resource_group]
+}
+
+## Datacontainer block
+
+module "datalakecontainer" {
+  source = "./infra/modules/datalakecontainer"
+  datalake_container_name = local.dl_container
+  datalake_resource_group_name = "BDAZE1IDAPPRG01"
+  existing_datalake = "bdaze1icommdl12"
+  datalake_ad_group_dev = [data.azuread_group.az_ad_dev.display_name]
+  datalake_ad_group_admins = [data.azuread_group.az_ad_admins.display_name]
+  depends_on = [data.azuread_group.az_ad_dev, data.azuread_group.az_ad_admins ]
+}
+## deploys databricks operations as per Dataproduct Spreadsheet
+
+module "databricks-mgmt" {
+  source                           = "./infra/modules/databricks-mgmt"
+  databricksName                   = "BDAZE1IDAPPBK01"
+  databrick-account_id             = "5169432361175602"
+  databrick-host-url               = "https://adb-5169432361175602.2.azuredatabricks.net"
+  databricksFolderName             = "COMM - Service Management (GLSM)"
+  dbws-GroupName                   = "COMM - Service Management (GLSM)"
+  databricks-group-memebers        = ["harish@rgtechlabsoutlook.onmicrosoft.com", "naresh@rgtechlabsoutlook.onmicrosoft.com", "SVC-RAHUL@rgtechlabsoutlook.onmicrosoft.com"]
+  default-databricks-groups        = ["cluster -General 01", "cluster -General 02"]
+  ServiceAccountuserName           = "SVC-RAHUL@rgtechlabsoutlook.onmicrosoft.com"
+  svc-token-keyvaultName           = "BDAZE1IDAPPKV01"
+  svc-token-keyvault_ResourceGroup = "BDAZE1IDAPPRG01"
+  svc-token-keyvaultID             = "/subscriptions/0fe0f1b2-5343-4344-8166-8ea779cb52df/resourceGroups/BDAZE1IDAPPRG01/providers/Microsoft.KeyVault/vaults/BDAZE1IdappKV01"
+  secretScopeName                  = "AKV-COMM"
+  secretACLScope                   = "MANAGE"
+   
+}

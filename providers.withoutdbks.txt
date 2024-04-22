@@ -1,0 +1,41 @@
+terraform {
+  required_version = ">= 1.0.0"
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 1.0.0"
+    }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = ">=1.0.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 1.0.0" # Specify a non-deprecated version
+    }
+    # databricks = {
+    #   source  = "databricks/databricks"
+    #   version = "1.0.1"
+    # }
+  }
+
+}
+
+provider "azurerm" {
+  skip_provider_registration = true
+  features {
+
+    key_vault {
+      purge_soft_delete_on_destroy = true
+      #   recover_soft_deleted_key_vaults = true
+    }
+  }
+
+}
+
+provider "random" {
+  # Configuration options for the provider (if any)
+}
+provider "azuread" {
+  tenant_id = "df49ebf2-2fd2-44c2-80f8-37058cc147b9"
+}

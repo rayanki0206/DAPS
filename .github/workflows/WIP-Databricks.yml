@@ -1,0 +1,267 @@
+name: WIP-Databricks
+
+on:       
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      databricks_workspace_info:
+        description: 'workspace name,account_id : testWorkspace,1e978274-191b-4f94-8148-8c173b659adb'
+        required: true
+        type: string
+      # databricks_resourcegroup_name:
+      #   description: 'workspace resource group : BDAZE1IDAPPRG01'
+      #   required: true
+      #   type: string
+      # databricks_account_id:
+      #   description: 'databricks account id : 00680b7a-95ee-48dc-8a32-43541d559e19'
+      #   required: true
+      #   type: string    
+      appshortcode_dp:
+          description: 'Application Shortcode,data_product_name : GLSM, Service Management'
+          required: true
+          type: string
+      # location:
+      #     description: 'app location'
+      #     required: true
+      #     default: "eastus"
+      #     type: choice
+      #     options:
+      #       - eastus
+      #       - westus
+      #       - westeurope
+      #       - northeurope
+      #       - amsterdam
+      #       - ashburn
+      environment:
+          description: 'environments :dev/qa'
+          required: true
+          type: choice
+          options:
+            - dev
+            - qa
+            #- prod
+      functional_area:
+          description: 'functionalarea : Global Services/DataOps/IT/M&Q/R&D'
+          required: true
+          type: choice
+          options:
+            - commercial
+            - dataops
+            - it
+            - global services
+            - m&q
+            - r&d
+      # data_product_name:
+      #     description: 'dataproductname: Service Management'
+      #     required: true
+      #     default: "Service Management"
+      #     type: string
+      admins_group:
+          description: 'AZ-SEC-ALL-GLO-GLSM-ADMINS'
+          type: string 
+      developers_group:
+          description: 'AZ-SEC-ALL-GLO-GLSM-DEVELOPERS'
+          type: string 
+      keyvault:
+          description: 'name of the keyvault'
+          type: string
+      datafactory:
+          description: 'name of the datafactory'
+          type: string 
+      service_principal:
+          description: 'display name of the service principal'
+          type: string
+      subscription_id:
+          description: 'subscription id of the keyvault and datafactory'
+          type: string          
+      # synapse_externaldata_fileformat:
+      #     description: 'external datasource file format:JSON/PARQUET/ORC/DELIMITEDTEXT'
+      #     required: true
+      #     type: choice
+      #     options:
+      #       - JSON
+      #       - PARQUET
+      #       - ORC
+      #       - DELIMITEDTEXT
+      # admin_user:
+      #     description: 'Admin Group member emailid'
+      #     default: "harish@rgtechlabsoutlook.onmicrosoft.com"
+      #     required: true
+      #     type: string
+      # developer_user:
+      #     description: 'Developer Group member emailid'
+      #     default: "naresh@rgtechlabsoutlook.onmicrosoft.com"
+      #     required: true
+      #     type: string
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          path: infra/envs/dev
+        
+      - name: Log in Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.WIP_AZURECREDENTIALS }}
+          
+
+      # - name: Azure CLI script
+      #   uses: azure/CLI@v1
+      #   with:
+      #     inlineScript: |
+      #       az login -u ${{ secrets.DBKSADMIN }} -p ${{ secrets.DBKSPWD }} --tenant ${{ secrets.ARM_TENANT_ID }}
+
+      - name: Provide execution permissions to replacement script
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks
+          chmod 777 ./checkfile.sh
+        
+      - name: Check if inputs.auto.tfvars exists
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks
+          ls
+          ./checkfile.sh
+
+      - name: Extract Workspace Name and Account ID
+        id: extract_workspace_info
+        run: echo "${{ github.event.inputs.databricks_workspace_info }}" | tr ',' '\n' > workspace_info.txt
+        # Extract workspace name and account ID using 'tr' command and save them to a file
+
+      - name: Set Environment Variables
+        run: |
+          echo "WORKSPACE_NAME=$(head -n 1 workspace_info.txt)" >> $GITHUB_ENV
+          echo "ACCOUNT_ID=$(tail -n 1 workspace_info.txt)" >> $GITHUB_ENV
+      # Set environment variables using 'head' and 'tail' commands to extract values from the file  
+      
+      - name: Extract Workspace Name and Account ID
+        id: extract_appcode_dataproduct_info
+        run: echo "${{ github.event.inputs.appshortcode_dp }}" | tr ',' '\n' > appcode_dataproduct_info.txt
+        # Extract workspace name and account ID using 'tr' command and save them to a file
+
+      - name: Set Environment Variables
+        run: |
+          echo "APP_CODE=$(head -n 1 appcode_dataproduct_info.txt)" >> $GITHUB_ENV
+          echo "DATA_PRODUCT_NAME=$(tail -n 1 appcode_dataproduct_info.txt)" >> $GITHUB_ENV
+      # Set environment variables using 'head' and 'tail' commands to extract values from the file  
+
+      - name: Generate inputs.tfvars
+        working-directory: infra/envs/dev  
+        run: |
+          cd Databricks
+          echo "databricks_workspace_name = \"$WORKSPACE_NAME\"" >> inputs.tfvars
+          echo "databricks_account_id = \"$ACCOUNT_ID\"" >> inputs.tfvars
+          echo "appmnemonic = \"$APP_CODE\"" >> inputs.tfvars
+          echo "environment = \"${{ github.event.inputs.environment }}\"" >> inputs.tfvars
+          echo "functional_area = \"${{ github.event.inputs.functional_area }}\"" >> inputs.tfvars
+          echo "data_product_name = \"$DATA_PRODUCT_NAME\"" >> inputs.tfvars
+          echo "ad_admins_group = \"${{ github.event.inputs.admins_group }}\"" >> inputs.tfvars
+          echo "ad_developers_group = \"${{ github.event.inputs.developers_group }}\"" >> inputs.tfvars
+          echo "service_principal = \"${{ github.event.inputs.service_principal }}\"" >> inputs.tfvars
+          echo "keyvault = \"${{ github.event.inputs.keyvault }}\"" >> inputs.tfvars
+          echo "datafactory = \"${{ github.event.inputs.datafactory }}\"" >> inputs.tfvars
+          echo "subscription_id = \"${{ github.event.inputs.subscription_id }}\"" >> inputs.tfvars
+
+
+          cat inputs.tfvars
+          ls
+    
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: "1.4.6"
+          terraform_wrapper: false
+          # cli_config_credentials_token: ${{ secrets.TFE_TOKEN }}
+
+
+      - name: Initialize Terraform
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks
+          terraform init
+
+      - name: Run Terraform Plan
+        working-directory: infra/envs/dev
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+        run: |
+          cd Databricks
+          terraform plan -var-file='inputs.tfvars'
+
+      - name: Deploy Azure resources
+        working-directory: infra/envs/dev
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+        run: |
+          cd Databricks
+          terraform apply -var-file='inputs.tfvars' -auto-approve 
+
+          
+      - name: Get service principal details
+        working-directory: infra/envs/dev
+        shell: pwsh
+        if: github.event.inputs.service_principal && github.event.inputs.keyvault
+        run: |
+          $spnsecvalue=(az keyvault secret show --name "ServicePrincipal-ClientSecret" --vault-name ${{ github.event.inputs.keyvault }} --query "value")
+          $clientid=(az ad sp list --display-name ${{ github.event.inputs.service_principal }} --query [0].appId)
+          Add-Content -Path $env:GITHUB_ENV -Value "spnsecvalue=$spnsecvalue"
+          Add-Content -Path $env:GITHUB_ENV -Value "clientid=$clientid"
+
+      - name: AZ logout and login with service principal
+        working-directory: infra/envs/dev
+        run: |
+          az login --service-principal -u ${{ env.clientid  }} -p ${{ env.spnsecvalue }} --tenant ${{secrets.WIP_ARM_TENANT_ID}}
+    
+      - name: check for file permissions
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks/PatToken
+          chmod 777 ./checkfile.sh
+
+      - name: Check if inputs.auto.tfvars exists
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks/PatToken
+          ls
+          ./checkfile.sh          
+
+      - name: Generate inputs.tfvars
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks/PatToken
+          echo "keyvault = \"${{ github.event.inputs.keyvault }}\"" >> inputs.tfvars
+          echo "subscription_id = \"${{ github.event.inputs.subscription_id }}\"" >> inputs.tfvars
+          echo "functional_area = \"${{ github.event.inputs.functional_area }}\"" >> inputs.tfvars
+          echo "service_principal = \"${{ github.event.inputs.service_principal }}\"" >> inputs.tfvars
+          echo "databricks_workspace_name = \"$WORKSPACE_NAME\"" >> inputs.tfvars
+
+          cat inputs.tfvars
+          ls
+
+      - name: Initialize  Terraform for PatToken Generation
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks/PatToken
+          terraform init
+      
+      - name: Run Terraform plan for PatToken Generation
+        working-directory: infra/envs/dev
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+        run: |
+          cd Databricks/PatToken
+          terraform plan -var-file='inputs.tfvars'
+
+      - name: Deploy Azure resources
+        working-directory: infra/envs/dev
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+        run: |
+          cd Databricks/PatToken
+          terraform apply -var-file='inputs.tfvars' -auto-approve
+        

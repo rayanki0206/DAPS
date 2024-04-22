@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "dbaeumer.vscode-eslint",
+        "csstools.postcss",
+        "mikestead.dotenv",
+        "hashicorp.terraform"
+    ]
+}

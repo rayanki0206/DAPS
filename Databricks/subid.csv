@@ -1,0 +1,13 @@
+environment,functioanal area,subscription id,subscription name
+dev,global services,34f22bc6-135a-4e3f-a2d9-28f2ea2e0607,Global Services Non-Production
+dev,it,055ac988-501b-4788-9d86-8f43bcbd7ccf,TechOps Non-Production
+dev,commercial,0a0bdfa4-f261-493d-b02e-a1c114b4298f,Commercial Non-Production
+dev,dataops,897caaa4-0ac7-43e3-97b4-b0b57029410d,D&A Non-Production
+dev,m&q,765b7ef6-0d12-4313-b67f-11e9e85ee0d6,M&Q Non-Production
+dev,r&d,a357d9b0-e1a1-4278-bf00-8a143f3d5e89,R&D Non-Production
+qa,global services,34f22bc6-135a-4e3f-a2d9-28f2ea2e0607,Global Services Non-Production
+qa,it,055ac988-501b-4788-9d86-8f43bcbd7ccf,TechOps Non-Production
+qa,commercial,0a0bdfa4-f261-493d-b02e-a1c114b4298f,Commercial Non-Production
+qa,dataops,897caaa4-0ac7-43e3-97b4-b0b57029410d,D&A Non-Production
+qa,m&q,765b7ef6-0d12-4313-b67f-11e9e85ee0d6,M&Q Non-Production
+qa,r&d,a357d9b0-e1a1-4278-bf00-8a143f3d5e89,R&D Non-Production

@@ -1,0 +1,6 @@
+keyvault = "BDAZE1IEOONKV01"
+subscription_id = "e7a4fc71-f2cb-415e-966e-03bdb900a137"
+functional_area = "global services"
+service_principal = "databricksspn"
+#databricks_rg_name        = "BDAZE1IDAPPRG01"
+databricks_workspace_name = "BDAZE1IDAPPBK01"

@@ -1,0 +1,5 @@
+appmnemonic = "nowe"
+#location          = "eastus"
+environment       = "dev"
+functional_area   = "global services"
+data_product_name = "Service Management"

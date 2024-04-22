@@ -1,0 +1,136 @@
+name: Prod-Deploy-Databricks_Services
+
+on:       
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      databricks_workspace_name:
+        description: 'workspace name: BPAZE1IDAPPBK01'
+        required: true
+        type: string
+      databricks_resourcegroup_name:
+        description: 'workspace resource group: BPAZE1IDAPPRG01'
+        required: true
+        type: string
+      databricks_account_id:
+        description: 'databricks account id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx'
+        required: true
+        type: string    
+      appshortcode:
+          description: 'Application Shortcode: GLSM'
+          required: true
+          type: string
+      environment:
+          description: 'environments: prod'
+          required: true
+          type: choice
+          options:
+            - prod
+      functional_area:
+          description: 'functionalarea: Global Services/DataOps/IT/M&Q/R&D'
+          required: true
+          type: choice
+          options:
+            - commercial
+            - dataops
+            - it
+            - global services
+            - m&q
+            - r&d
+      data_product_name:
+          description: 'dataproductname: Service Management'
+          required: true
+          default: "Service Management"
+          type: string
+jobs:
+  Deploy-DBKS-Management-Services:
+    if: contains('["Gopala-Rakesh","rahulgundam-elanco","ScottHHuston"]',github.actor)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: master
+          path: infra/envs/dev
+          
+      - name: Log in Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.PRODAZURECREDENTIALS }}
+          
+      - name: Provide execution permissions to replacement script
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks
+          chmod 777 ./checkfile.sh
+          chmod 777 ./get_subscription_id.sh
+        
+      - name: Check if inputs.auto.tfvars exists
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks
+          ls
+          ./checkfile.sh
+
+      # Add a step to fetch the subscription ID
+      - name: Get Subscription ID
+        id: get_subscription_id
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks
+          subscription_id=$(bash ./get_subscription_id.sh "${{ github.event.inputs.functional_area }}" "${{ github.event.inputs.environment }}")
+          echo "subscription_id=$subscription_id" >> $GITHUB_ENV
+          echo "$subscription_id"
+
+      # Use the subscription ID in subsequent steps if needed
+      - name: set Subscription ID
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks
+          az account set --subscription $env:subscription_id    
+
+
+      - name: Generate inputs.tfvars
+        working-directory: infra/envs/dev  
+        run: |
+          cd Databricks
+          echo "databricks_workspace_name = \"${{ github.event.inputs.databricks_workspace_name }}\"" >> inputs.tfvars
+          echo "databricks_rg_name = \"${{ github.event.inputs.databricks_resourcegroup_name }}\"" >> inputs.tfvars
+          echo "databricks_account_id = \"${{ github.event.inputs.databricks_account_id }}\"" >> inputs.tfvars
+          echo "appmnemonic = \"${{ github.event.inputs.appshortcode }}\"" >> inputs.tfvars
+          echo "environment = \"${{ github.event.inputs.environment }}\"" >> inputs.tfvars
+          echo "functional_area = \"${{ github.event.inputs.functional_area }}\"" >> inputs.tfvars
+          echo "data_product_name = \"${{ github.event.inputs.data_product_name }}\"" >> inputs.tfvars
+
+          cat inputs.tfvars
+          ls
+    
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: "1.4.6"
+          terraform_wrapper: false
+          # cli_config_credentials_token: ${{ secrets.TFE_TOKEN }}
+
+      - name: Initialize Terraform
+        working-directory: infra/envs/dev
+        run: |
+          cd Databricks
+          terraform init
+
+      - name: Run Terraform Plan
+        working-directory: infra/envs/dev
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+        run: |
+          cd Databricks
+          terraform plan -var-file='inputs.tfvars'
+
+      - name: Deploy Azure resources
+        working-directory: infra/envs/dev
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+        run: |
+          cd Databricks
+          terraform apply -var-file='inputs.tfvars' -auto-approve 
